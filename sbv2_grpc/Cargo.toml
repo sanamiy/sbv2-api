@@ -1,0 +1,17 @@
+[package]
+name = "sbv2_grpc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tonic = "0.9"
+prost = "0.11"
+tokio = { version = "1.40.0", features = ["full"] }
+anyhow = { workspace = true }
+axum = "0.7.5"
+dotenvy = "0.15.7"
+sbv2_core = { version = "0.1.0", path = "../sbv2_core" }
+serde = { version = "1.0.210", features = ["derive"] }
+
+[build-dependencies]
+tonic-build = "0.9"

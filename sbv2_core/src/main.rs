@@ -4,7 +4,7 @@ fn main() -> error::Result<()> {
     let text = "眠たい";
 
     let tts_model = tts::TTSModel::new(
-        "models/debert.onnx",
+        "models/deberta.onnx",
         "models/model_opt.onnx",
         "models/style_vectors.json",
     )?;

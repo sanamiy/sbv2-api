@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package tts;
+
+service Tts {
+  rpc Synthesize (SynthesizeRequest) returns (SynthesizeResponse);
+}
+
+message SynthesizeRequest {
+  string text = 1;
+}
+
+message SynthesizeResponse {
+  bytes audio = 1;
+}
