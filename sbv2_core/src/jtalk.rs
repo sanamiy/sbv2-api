@@ -24,7 +24,6 @@ static JTALK_G2P_G_A2_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\+(\d+)\+
 static JTALK_G2P_G_A3_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\+(\d+)/").unwrap());
 static JTALK_G2P_G_E3_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"!(\d+)_").unwrap());
 static JTALK_G2P_G_F1_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"/F:(\d+)_").unwrap());
-static JTALK_G2P_G_P3_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\-(.*?)\+").unwrap());
 
 fn numeric_feature_by_regex(regex: &Regex, text: &str) -> i32 {
     if let Some(mat) = regex.captures(text) {
@@ -351,11 +350,7 @@ impl JTalkProcess {
 
         let mut phones: Vec<String> = Vec::new();
         for (i, label) in labels.iter().enumerate() {
-            let mut p3 = {
-                let label_text = label.to_string();
-                let mattched = JTALK_G2P_G_P3_PATTERN.captures(&label_text).unwrap();
-                mattched[1].to_string()
-            };
+            let mut p3 = label.phoneme.c.clone().unwrap_or_else(|| "".to_string());
             if "AIUEO".contains(&p3) {
                 // 文字をlowerする
                 p3 = p3.to_lowercase();
