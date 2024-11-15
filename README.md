@@ -1,5 +1,8 @@
 # SBV2-API
 
+## 注意：本バージョンはアルファ版です。
+安定版を利用したい場合は[こちら](https://github.com/tuna2134/sbv2-api/tree/v0.1.x)をご覧ください。
+
 ## プログラミングに詳しくない方向け
 
 [こちら](https://github.com/tuna2134/sbv2-gui?tab=readme-ov-file)を参照してください。
@@ -28,6 +31,7 @@ JP-Extra しか対応していません。(基本的に対応する予定もあ�
 - [x] GPU 対応(CoreML)
 - [ ] WASM 変換(依存ライブラリの関係により現在は不可)
 - [x] arm64のdockerサポート
+- [ ] MeCabを利用する
 
 ## 構造説明
 

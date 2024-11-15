@@ -1,5 +1,5 @@
 use crate::error::Result;
-use ndarray::{array, Array1, Array2, Array3, Axis};
+use ndarray::{array, Array1, Array2, Array3, Axis, Ix3};
 use ort::{GraphOptimizationLevel, Session};
 
 #[allow(clippy::vec_init_then_push, unused_variables)]
@@ -52,6 +52,7 @@ pub fn synthesize(
     session: &Session,
     bert_ori: Array2<f32>,
     x_tst: Array1<i64>,
+    sid: Array1<i64>,
     tones: Array1<i64>,
     lang_ids: Array1<i64>,
     style_vector: Array1<f32>,
@@ -67,7 +68,7 @@ pub fn synthesize(
     let outputs = session.run(ort::inputs! {
         "x_tst" => x_tst,
         "x_tst_lengths" => x_tst_lengths,
-        "sid" => array![0_i64],
+        "sid" => sid,
         "tones" => tones,
         "language" => lang_ids,
         "bert" => bert,
@@ -76,18 +77,10 @@ pub fn synthesize(
         "length_scale" => array![length_scale],
     }?)?;
 
-    let audio_array = outputs
-        .get("output")
-        .unwrap()
+    let audio_array = outputs["output"]
         .try_extract_tensor::<f32>()?
+        .into_dimensionality::<Ix3>()?
         .to_owned();
 
-    Ok(Array3::from_shape_vec(
-        (
-            audio_array.shape()[0],
-            audio_array.shape()[1],
-            audio_array.shape()[2],
-        ),
-        audio_array.into_raw_vec_and_offset().0,
-    )?)
+    Ok(audio_array)
 }

@@ -11,10 +11,23 @@ use std::env;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::Mutex;
+use utoipa::{OpenApi, ToSchema};
+use utoipa_scalar::{Scalar, Servable};
 
 mod error;
 use crate::error::AppResult;
 
+#[derive(OpenApi)]
+#[openapi(paths(models, synthesize), components(schemas(SynthesizeRequest)))]
+struct ApiDoc;
+
+#[utoipa::path(
+    get,
+    path = "/models",
+    responses(
+        (status = 200, description = "Return model list", body = Vec<String>),
+    )
+)]
 async fn models(State(state): State<AppState>) -> AppResult<impl IntoResponse> {
     Ok(Json(state.tts_model.lock().await.models()))
 }
@@ -27,7 +40,15 @@ fn length_default() -> f32 {
     1.0
 }
 
-#[derive(Deserialize)]
+fn style_id_default() -> i32 {
+    0
+}
+
+fn speaker_id_default() -> i64 {
+    0
+}
+
+#[derive(Deserialize, ToSchema)]
 struct SynthesizeRequest {
     text: String,
     ident: String,
@@ -35,8 +56,20 @@ struct SynthesizeRequest {
     sdp_ratio: f32,
     #[serde(default = "length_default")]
     length_scale: f32,
+    #[serde(default = "style_id_default")]
+    style_id: i32,
+    #[serde(default = "speaker_id_default")]
+    speaker_id: i64,
 }
 
+#[utoipa::path(
+    post,
+    path = "/synthesize",
+    request_body = SynthesizeRequest,
+    responses(
+        (status = 200, description = "Return audio/wav", body = Vec<u8>, content_type = "audio/wav")
+    )
+)]
 async fn synthesize(
     State(state): State<AppState>,
     Json(SynthesizeRequest {
@@ -44,15 +77,18 @@ async fn synthesize(
         ident,
         sdp_ratio,
         length_scale,
+        style_id,
+        speaker_id,
     }): Json<SynthesizeRequest>,
 ) -> AppResult<impl IntoResponse> {
     log::debug!("processing request: text={text}, ident={ident}, sdp_ratio={sdp_ratio}, length_scale={length_scale}");
     let buffer = {
-        let tts_model = state.tts_model.lock().await;
+        let mut tts_model = state.tts_model.lock().await;
         tts_model.easy_synthesize(
             &ident,
             &text,
-            0,
+            style_id,
+            speaker_id,
             SynthesizeOptions {
                 sdp_ratio,
                 length_scale,
@@ -73,6 +109,9 @@ impl AppState {
         let mut tts_model = TTSModelHolder::new(
             &fs::read(env::var("BERT_MODEL_PATH")?).await?,
             &fs::read(env::var("TOKENIZER_PATH")?).await?,
+            env::var("HOLDER_MAX_LOADED_MODElS")
+                .ok()
+                .and_then(|x| x.parse().ok()),
         )?;
         let models = env::var("MODELS_PATH").unwrap_or("models".to_string());
         let mut f = fs::read_dir(&models).await?;
@@ -139,7 +178,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(|| async { "Hello, World!" }))
         .route("/synthesize", post(synthesize))
         .route("/models", get(models))
-        .with_state(AppState::new().await?);
+        .with_state(AppState::new().await?)
+        .merge(Scalar::with_url("/docs", ApiDoc::openapi()));
     let addr = env::var("ADDR").unwrap_or("0.0.0.0:3000".to_string());
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     log::info!("Listening on {addr}");

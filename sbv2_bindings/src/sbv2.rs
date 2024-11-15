@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use sbv2_core::tts::{TTSModelHolder, SynthesizeOptions};
+use sbv2_core::tts::{SynthesizeOptions, TTSModelHolder};
 
 use crate::style::StyleVector;
 
@@ -23,10 +23,15 @@ pub struct TTSModel {
 
 #[pymethods]
 impl TTSModel {
+    #[pyo3(signature = (bert_model_bytes, tokenizer_bytes, max_loaded_models=None))]
     #[new]
-    fn new(bert_model_bytes: Vec<u8>, tokenizer_bytes: Vec<u8>) -> anyhow::Result<Self> {
+    fn new(
+        bert_model_bytes: Vec<u8>,
+        tokenizer_bytes: Vec<u8>,
+        max_loaded_models: Option<usize>,
+    ) -> anyhow::Result<Self> {
         Ok(Self {
-            model: TTSModelHolder::new(bert_model_bytes, tokenizer_bytes)?,
+            model: TTSModelHolder::new(bert_model_bytes, tokenizer_bytes, max_loaded_models)?,
         })
     }
 
@@ -38,10 +43,21 @@ impl TTSModel {
     ///     BERTモデルのパス
     /// tokenizer_path : str
     ///     トークナイザーのパス
+    /// max_loaded_models: int | None
+    ///     同時にVRAMに存在するモデルの数
+    #[pyo3(signature = (bert_model_path, tokenizer_path, max_loaded_models=None))]
     #[staticmethod]
-    fn from_path(bert_model_path: String, tokenizer_path: String) -> anyhow::Result<Self> {
+    fn from_path(
+        bert_model_path: String,
+        tokenizer_path: String,
+        max_loaded_models: Option<usize>,
+    ) -> anyhow::Result<Self> {
         Ok(Self {
-            model: TTSModelHolder::new(fs::read(bert_model_path)?, fs::read(tokenizer_path)?)?,
+            model: TTSModelHolder::new(
+                fs::read(bert_model_path)?,
+                fs::read(tokenizer_path)?,
+                max_loaded_models,
+            )?,
         })
     }
 
@@ -121,11 +137,12 @@ impl TTSModel {
     /// voice_data : bytes
     ///     音声データ
     fn synthesize<'p>(
-        &'p self,
+        &'p mut self,
         py: Python<'p>,
         text: String,
         ident: String,
         style_id: i32,
+        speaker_id: i64,
         sdp_ratio: f32,
         length_scale: f32,
     ) -> anyhow::Result<Bound<PyBytes>> {
@@ -133,6 +150,7 @@ impl TTSModel {
             ident.as_str(),
             &text,
             style_id,
+            speaker_id,
             SynthesizeOptions {
                 sdp_ratio,
                 length_scale,
